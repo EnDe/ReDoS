@@ -296,17 +296,6 @@ var ReDoS = {
 			return t;
 		}, // tr
 		'tab':function(){           // create table
-			/* +--------+---+-----+-------+---------------------+
-			 * | regex  |   |time | count |      strings        |
-			 * +--------+---+-----+-------+---------------------+
-			 * |         [m]  [r]                pattern        |
-			 * +--------+---+-----+-------+---------------------+
-			 * |        |[m]|     |       |                     |
-			 * |  regex |---+-----+-------+---------------------+
-			 * |        |[r]|     |       |                     |
-			 * +--------+---+-----+-------+---------------------+
-			 * ...
-			 */
 			var b = document.createElement('TBODY'); b.id = 'tbody';
 			var t = null
 			var p = 0, r = 0, c = 0; 
@@ -350,17 +339,12 @@ var ReDoS = {
 			delete t; t = null;
 			//this.testmatch(  '*',null);
 			//this.testreplace('*',null);
-		}, //tab
-		'use':      function(i,val){
-			ReDoS.tests[i].use = val;
-			var t = ReDoS.tests[i];
-		}, //use
-		'groupby':  function(val){
-			this.view = val;
-			document.getElementById('result').innerHTML = '';
-			this.tab();
-			return true;
-		}, //tab
+		}, // tab
+		'clear':    function(){ document.getElementById('result').innerHTML = ''; }, // clear
+		'use':      function(i,val){ ReDoS.tests[i].use = val;                    }, // use
+		'groupby':  function(val){ this.view = val;                      this.clear(); this.tab(); return true; }, // groupby
+		'addpay':   function(val){ ReDoS.payloads.push(new RegExp(val)); this.clear(); this.tab(); }, // addpay
+		'addrex':   function(val){ ReDoS.patterns.push(new RegExp(val)); this.clear(); this.tab(); }, // addrex
 		'setm': function(i){
 			var t = ReDoS.tests[i];
 			if (t.mt1===null){ document.getElementById('Match.time.' +i).style.background = 'red'; }
@@ -484,6 +468,10 @@ tr      {border-bottom:1px solid black;}
 	<b>group table by: </b>
 	<label for="gp">Payload <input id="gp" name="grp" type="radio" value="Payload" onClick="return ReDoS.GUI.groupby(this.value);" checked ></label>
 	<label for="gr">RegExp  <input id="gr" name="grp" type="radio" value="RegExp"  onClick="return ReDoS.GUI.groupby(this.value);"></label>
+</div>
+<div>
+	<input id="pay" size="30">&#160;<button onclick="ReDoS.GUI.addpay(document.getElementById('pay').value);return false;">add new Payload</button>
+	<input id="rex" size="30">&#160;<button onclick="ReDoS.GUI.addrex(document.getElementById('rex').value);return false;">add new RegEx</button>
 </div>
 <div>
 	<button onclick="ReDoS.GUI.testmatch(  '*',null);return false;">test all .match()</button>
