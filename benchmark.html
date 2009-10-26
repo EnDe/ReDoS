@@ -1,0 +1,495 @@
+<html>
+<!--
+ vi:  ts=4:
+ vim: ts=4:
+-->
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+	<title>ReDoS-Test for JavaScript (%I%)</title>
+	<meta name="Author"         content="Achim Hoffmann">
+	<meta name="Generator"      content="me using vi ;-)">
+	<meta name="DC.Creator"     content="redos @at@ my -dash- stp .dot. net">
+	<meta name="DC.Date"        content="2009-20-10">
+	<meta name="DC.Source"      content="@(#) %M% %i% %E% %U%">
+	<meta name="DC.Identifier"  content="git://github .dot. com/EnDe/ReDoS/">
+	<meta name="DC.Title"       content="ReDoS-Test for JavaScript">
+	<meta name="DC.Description" content="ReDoS-Test for JavaScript">
+	<meta name="DC.Language"    content="en">
+	<meta name="DC.Rights"      content="Creative Commons 3.0, http://creativecommons.org/licenses/by-sa/3.0/">
+
+<script language="JavaScript" type="text/javascript">
+//<![CDATA[
+var ReDoS = {
+	/* DESCRIPTION
+	 *      All RegEx and payloads are defined in this ReDoS{} object.
+	 *      There're 2 functions in ReDoS: .testmatch() .testreplace()
+	 *      to perform the test. These functions call rxm() and rxr().
+	 *
+	 *      +---------------+                       +---------------+
+	 *      |   functions   |                       |      data     |
+	 *      + - - - - - - - +                       + - - - - - - - +
+	 *      +---------------+                       +---------------+
+	 *      | .testXXXXX(i) |--->--->initialize-->-->  .tests[i]    |
+	 *      +---------------+                       |   +- .rex     |
+	 *         /                                    |   +- .pay     |
+	 *        /                                     |   +- ....     |
+	 *       |  +---------------+                   |   +- .XXXXX   |
+	 *       |--|     .rxX(i)   |--->set values-->-->   +- .Xt0     |
+	 *        \ +---------------+                   |   +- .Xt1     |
+	 *        / +---------------+                   |               |
+	 *       |--| .GUI.setX(i)  |<---get values--<--<               |
+	 *       |  +---------------+                   +---------------+
+	 *        \---- called with setTimeout()
+	 *
+	 *      All variables and functions in ReDoS.GUI* are for building
+	 *      and updating the DOM (HML tags).
+	 *
+	 *      Note about setTimeout() call:
+	 *      The setTimeout() calls are used to simulate threading.This
+	 *      avoids a completely hanging browser if a match() replace()
+	 *      consumes all time.
+	 *          1st setTimout() calls the .match() or .replace() 
+	 *          2st setTimout() calls a GUI function to display values
+	 *      For gecko-based browsers the first argument of setTimeout()
+	 *      must be enclosed in " (double quotes),  otherwise a syntax
+	 *      error is thrown.
+	 *      Most other browsers accept the 1'st argument without these
+	 *      quotes, but works with quotes too, hence we use the them.
+	 *
+	 */
+	/*****************************************************************
+	 ** constants
+	 *****************************************************************/
+	'timeout':  3000,   // default: 3 seconds
+	/*****************************************************************
+	 ** payloads and RegExp pattern
+	 *****************************************************************/
+	/* we use RegExp instead of string objects to avoid escaping
+	 * see ReDoS.payload2str() to cast to string again
+	 */
+	'payloads': [
+		/aaaaaaaaaaaaX/,
+		/aaaaaaaaaaaaaaaaaaX/,
+		/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaX/,
+		/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaX/,
+		/aaaaaaaaaa/,
+		/aaaaaaaaaaaaaaaaaaaa/,                  // Cox
+		/aaaaaaaaaaaaaaaaaaaaaaaaa/,             // Cox
+		/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/,    // Cox
+		/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa!/,    // Java Classname
+		/a@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa!/,    // email validation
+		/a@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaX/,    //
+		/(.+)+\u0001/,                           // invalid escape sequence
+		'[,,,,,,,,,,,,,,,,,,,,,,,,,,,,,',        // DataVault
+		/\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\"/,     // EntLib
+		/\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\"x/,    // 
+		null ],
+	'patterns': [
+		/(a+)+/,
+		/([a-zA-Z]+)*/,
+		/(a|aa)+/,
+		/(a|a?)+/,
+		/(.*a){11}/,
+/* 5*/	/(.*a){65}/,
+		/([^\\"']+)*/,                           // Friedl
+		//----------------------------------------------------------------------
+		/* same as above again enclosed in ^and $ ... */
+/* 7*/	/^(a+)+$/,
+/* 8*/	/^([a-zA-Z]+)*$/,
+		/^(a|aa)+$/,
+/*10*/	/^(a|a?)+$/,
+/*11*/	/^(.*a){11}$/,
+/*12*/	/^(.*a){65}$/,
+		/^([^\\"']+)*$/,
+		//----------------------------------------------------------------------
+/*14*/	/^[a-zA-Z]+(([\'\,\.\-][a-zA-Z ])?[a-zA-Z]*)*$/, // OWASP
+/*15*/	/^\[(,.*)*\]$/,                          // DataVault
+		/^([^\"]+)(?:\\([^\"]+))*$/,             // EntLib
+		/^(([a-z])+.)+[A-Z]([a-z])+$/,           // Java Classname
+		/a?a?a?a?a?a?a?a?a?a?aaaaaaaaaa/,        // Cox
+/*19*/	/a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?aaaaaaaaaaaaaaaaaaaaaaaaa/, // Cox
+		null ],
+	'nohang':{
+		'Mac OS X':['Webkit', 'Safari4', 'Shiira2.2', 'iCab4.7', 'OmniWeb5.10' ],
+		'Windoze': ['Webkit', 'Safari4' ]
+	}, // nohang
+	/* following just rough lists as not all pattern fail with all payloads */
+	'hang':{
+		'Mac OS X':['FF2', 'FF3', 'Opera10', 'Camino', 'Sunrise1.8' ],
+		'Windoze': ['FF2', 'FF3', 'Opera10', 'Chrome' ], // Mozilla 1.7 hangs partially
+		'Linux':   ['FF2', 'FF3', 'Opera10' ],
+		'FF2':     [5, 7, 8, 10, 11, 12, 14, 15, 19],
+		'Opera10': [5, 7, 8, 10, 11, 12, 14, 15, 19],
+		'Camino':  [5, 7, 8, 10, 11, 12, 14, 15, 19],
+		'Chrome':  [5, 7, 8, 10, 11, 12, 14, 15, 19]
+	}, // hang
+	/*****************************************************************
+	 ** string functions
+	 *****************************************************************/
+	'payload2str': function(r){
+		if (typeof(r)==='function'){ // RegExp are of object type function
+			return r.toString().substring(1,r.toString().length-1);
+		}
+		if (typeof(r)==='object'){   // .. but some browser use object :-(
+			return r.toString().substring(1,r.toString().length-1);
+		}
+		return r;
+	}, // payload2str
+	'escape': function(r){  // browser build-ins are too stupid, sometimes
+		return r.replace(/[^a-zA-Z0-9;,:._#'+*~!"§$%\/()=?{}\[\]\\ |-]/gi,function(c){return '%'+parseInt(c.charCodeAt(),10).toString(16);});
+
+		return r;
+	}, // escape
+	/*****************************************************************
+	 ** tests
+	 *****************************************************************/
+	't0':   function() {return ((new Date().getTime()));     },
+	't1':   function(t){return ((new Date().getTime()) - t); },
+	'tests':{       // hash containing all tests
+		'sample':{  //  '"sample" is base id of row in table where to show results',
+			'rex':      'RegExp pattern',
+			'pay':      'payload to be used for RegExp',
+			'mt0':      'contains start time in mili-seconds for match()',
+			'rt0':      'contains start time in mili-seconds for replace()',
+			'mt1':      'contains  end  time in mili-seconds for match()',
+			'rt1':      'contains  end  time in mili-seconds for replace()',
+			'cnt':      'number of substitutions doen by replace()',
+			'matches':  'contains the result of pay.match(reg);',
+			'merror':   'catched errors and exceptions',
+			'replace':  'contains the result of pay.replace(reg,"X");',
+			'rerror':   'catched errors and exceptions'
+		}
+	}, // tests
+	/* for following functions the input parameter must be key of above tests hash */
+	'rxm':  function(i){            // .match() for given testcase
+		var t = this.tests[i];
+		var a = null;
+		var p = this.payload2str(t.pay);
+		try {
+			t.mt0 = this.t0();
+			var a = p.match(t.rex);
+			t.mt1 = this.t1(t.mt0);
+			t.matches = a;
+		} catch(e) { t.merror = e; }
+		t = null; p = null;
+	}, // rxm
+	'rxr':  function(i){            // .replace() for given testcase
+		var t = this.tests[i];
+		var a = null;
+		var p = this.payload2str(t.pay);
+		var c = 0;  // .replace() can not count the substitutions itself
+		try {
+			t.rt0 = this.t0();
+			var a = p.replace(new RegExp(this.payload2str(t.rex),'g'), function(){c++;return 'R';});
+			t.rt1 = this.t1(t.rt0);
+			t.cnt = c;
+			t.replace = a;
+		} catch(e) { t.rerror = e; }
+		t = null; p = null;
+	}, // rxr
+	/*****************************************************************
+	 ** GUI functions
+	 *****************************************************************/
+	'GUI':{
+		'self': this,
+		'rows': 0,                  // count rows for RegEx
+		'view': 'Payload',          // group table by Payload or RegExp
+		'btn':function(t,c,i,u,p){  // create table TH or TD cell with button
+			// ugly hack with u parameter
+			var d = this.td(t, null, i, null, '');
+			if (c!==null) { d.setAttribute('class',c); }
+			var b = document.createElement('BUTTON');
+			b.value = i;
+			if (p==='m'){
+				if (u===null) { // just one regex
+					b.setAttribute('onClick','ReDoS.GUI.testmatch("'+i+'",null);  return false;');
+					b.title = 'test with .match()';
+				} else {        // all regex
+					b.setAttribute('onClick','ReDoS.GUI.testmatch("*", "'+i+'");  return false;');
+					b.title = u;
+				}
+			}
+			if (p==='r'){
+				if (u===null) { // just one regex
+					b.setAttribute('onClick','ReDoS.GUI.testreplace("'+i+'",null);return false;');
+					b.title = 'test with .replace()';
+				} else {        // all regex
+					b.setAttribute('onClick','ReDoS.GUI.testreplace("*", "'+i+'");return false;');
+					b.title = u;
+				}
+			}
+			if (u!==null) { b.title = u; } // overwrite above defaults
+			b.appendChild(document.createTextNode(p));
+			d.appendChild(b);
+			return d;
+		}, // btn
+		'td':function(t,c,i,u,p){   // create table TH or TD cell
+			var d = document.createElement(t);
+			if (i!==null) { d.id    = i; }
+			if (u!==null) { d.title = u; }
+			if (c!==null) { d.setAttribute('class',c); }
+			d.appendChild(document.createTextNode(p));
+			return d;
+		}, // td
+		'hd':function(p){           // create (sub)table header row
+			var t = document.createElement('TR');
+			t.appendChild(this.td( 'TH', 'h', null, null, ' '));
+			t.appendChild(this.td( 'TH', 'h', null, null, ' '));
+			t.appendChild(this.btn('TH', 'b', ReDoS.payload2str(p), 'test all RegExp with .match()',  'm'));
+			t.appendChild(this.btn('TH', 'b', ReDoS.payload2str(p), 'test all RegExp with .replace()','r'));
+			d = document.createElement('TH');
+			d.setAttribute('class','h');
+			d.colSpan = 2;
+			d.title   = 'length: '+ ReDoS.payload2str(p).length;
+			d.appendChild(document.createTextNode( ReDoS.payload2str(p) ));
+			t.appendChild(d);
+			delete d; d = null;
+			return t;
+		}, // hd
+		'tr':function(i,r,p){       // create table row
+			/* +---+--------+---+-----+-------+---------------------+
+			 * |use|  regex |   |time | count |      strings        | # if r===null && p===null
+			 * +---+--------+---+-----+-------+---------------------+
+			 * |   |        |[m]|     |       |                     | # if r!==null
+			 * |(x)|  regex |---+-----+-------+---------------------+
+			 * |   |        |[r]|     |       |                     | # if r===null
+			 * +---+--------+---+-----+-------+---------------------+
+			 */
+			var txt = (r===null) ? 'r' : 'm';
+			var t = document.createElement('TR');
+			if ((r===null)&&(p===null)){
+				t.appendChild(this.td('TH','e2',null,'enable/disable match/replace','use'   ));
+				t.appendChild(this.td('TH',null,null, null,((this.view==='Payload')?'RegExp':'string') ));
+				t.appendChild(this.td('TH','e2',null, null,                         ' '     ));
+				t.appendChild(this.td('TH','e2',null,'elapsed time in ms',          'time'  ));
+				t.appendChild(this.td('TH','e2',null,'number of matches/replaces',  'count' ));
+				t.appendChild(this.td('TH',null,null,'result of match/replace',     ((this.view==='Payload')?'string':'RegExp') ));
+				return t;
+			}
+			var d = null;
+			var x = null;
+			var a = 'Replace.';
+			if (r!==null){
+				this.rows++;
+				a = 'Match.';
+				d = document.createElement('TD');
+				d.rowSpan = 2;
+				x = document.createElement('INPUT');
+				x.id = i + '.use'; x.type = 'checkbox'; x.checked = true;
+				x.setAttribute('onClick','ReDoS.GUI.use("'+i+'",this.checked);');
+				d.appendChild(x);
+				t.appendChild(d);
+				d = document.createElement('TH');
+				d.rowSpan = 2;
+				d.title   = 'length: '+ ReDoS.payload2str(r).length;
+				d.setAttribute('class','r');
+				d.appendChild(document.createTextNode( ReDoS.payload2str(r) ));
+				t.appendChild(d);
+			}
+			if ((this.rows%2)===0){ t.style.backgroundColor = '#f0f0f0'; }
+			// create cell in row: tag, class,  id,               title,        text
+			// ------------------+-----+------+-----------------+--------------+---------
+			t.appendChild(this.btn('TD', null,  i,                 null,         txt));
+			t.appendChild(this.td( 'TD', null, (a + 'time.'  + i),(a + ' time'), ' '));
+			t.appendChild(this.td( 'TD', null, (a + 'count.' + i),(a + ' count'),' '));
+			t.appendChild(this.td( 'TD', null, (a + 'text.'  + i), null,         ' '));
+			return t;
+		}, // tr
+		'tab':function(){           // create table
+			/* +--------+---+-----+-------+---------------------+
+			 * | regex  |   |time | count |      strings        |
+			 * +--------+---+-----+-------+---------------------+
+			 * |         [m]  [r]                pattern        |
+			 * +--------+---+-----+-------+---------------------+
+			 * |        |[m]|     |       |                     |
+			 * |  regex |---+-----+-------+---------------------+
+			 * |        |[r]|     |       |                     |
+			 * +--------+---+-----+-------+---------------------+
+			 * ...
+			 */
+			var b = document.createElement('TBODY'); b.id = 'tbody';
+			var t = null
+			var p = 0, r = 0, c = 0; 
+			var i = '';
+			var groups = ReDoS.payloads;
+			var lines  = ReDoS.patterns;
+			if (this.view==='RegExp'){
+				groups = ReDoS.patterns;
+				lines  = ReDoS.payloads;
+			}
+			for (p=0; p<groups.length; p++){
+				if (groups[p]===null){ continue; }
+				b.appendChild( this.hd( groups[p] ) );
+				for (c=0; c<lines.length; c++){
+					if (lines[c]===null){ continue; }
+					i = 'p' + p.toString(10) + '.' + c.toString(10); 
+					b.appendChild( this.tr( i, lines[c], groups[p] ) );
+					b.appendChild( this.tr( i, null,     groups[p] ) );
+					ReDoS.tests[i] = {
+						'use':      true,
+						'rex':      ((this.view==='Payload') ? lines[c] : groups[p]),
+						'pay':      ((this.view==='Payload') ? groups[p] : lines[c]),
+						'mt0':      null,
+						'rt0':      null,
+						'mt1':      null,
+						'rt1':      null,
+						'cnt':      null,
+						'matches':  null,
+						'merror':   null,
+						'replace':  null,
+						'rerror':   null
+					};
+				}
+			} // rows
+			t = document.createElement('TABLE');
+			t.appendChild(b);
+			b = document.createElement('THEAD');
+			b.appendChild( this.tr( 'head', null, null ) );
+			t.appendChild(b);
+			document.getElementById('result').appendChild(t);
+			delete t; t = null;
+			//this.testmatch(  '*',null);
+			//this.testreplace('*',null);
+		}, //tab
+		'use':      function(i,val){
+			ReDoS.tests[i].use = val;
+			var t = ReDoS.tests[i];
+		}, //use
+		'groupby':  function(val){
+			this.view = val;
+			document.getElementById('result').innerHTML = '';
+			this.tab();
+			return true;
+		}, //tab
+		'setm': function(i){
+			var t = ReDoS.tests[i];
+			if (t.mt1===null){ document.getElementById('Match.time.' +i).style.background = 'red'; }
+			document.getElementById('Match.time.' +i).innerHTML = ((t.mt1===null)    ?'~':t.mt1);
+			if (t.merror!==null){
+				document.getElementById('Match.text.' +i).innerHTML = ReDoS.escape(t.merror.toString());
+				document.getElementById('Match.text.' +i).style.background = 'red';
+				document.getElementById('Match.text.' +i).title     = '<JavaScript runtime exception>';
+				t = null;
+				return;
+			}
+			document.getElementById('Match.count.'+i).innerHTML = ((t.matches===null)?'-':t.matches.length-1);
+			document.getElementById('Match.text.' +i).title     = ((t.matches===null)?'<null>':ReDoS.escape(t.matches.toString()));
+			var s = '';
+			if (t.matches!==null){
+				t.matches.shift();
+				s = t.matches.join(', ');
+				//while(p.pop()) {};
+				document.getElementById('Match.text.'+i).innerHTML = s;
+			}
+			t = null;
+		}, // setm
+		'setr': function(i,t,p,c){
+			var t = ReDoS.tests[i];
+			if (t.rt1===null){ document.getElementById('Replace.time.' +i).style.background = 'red'; }
+			document.getElementById('Replace.time.' +i).innerHTML = ((t.rt1===null)    ?'~':t.rt1);
+			if (t.rerror!==null){
+				document.getElementById('Replace.text.' +i).innerHTML = ReDoS.escape(t.rerror.toString());
+				document.getElementById('Replace.text.' +i).style.background = 'red';
+				document.getElementById('Replace.text.' +i).title     = '<JavaScript runtime exception>';
+				t = null;
+				return;
+			}
+			document.getElementById('Replace.text.' +i).innerHTML = t.replace;
+			document.getElementById('Replace.count.'+i).innerHTML = t.cnt;
+			document.getElementById('Replace.text.' +i).title     = ((t.replace===null)?'<null>':ReDoS.escape(t.replace.toString()));
+			t = null;
+		}, // setr
+		'testmatch':    function(i,p){  // call .match() for given testcase
+			/* i='*':   use all testcases
+			 * i!=null: use just that testcase
+			 * p!=null: use all testcases with that payload
+			 */
+			var x = i;
+			if (i==='*'){
+				for (x in ReDoS.tests){
+					if (x==='sample'){ continue; }
+					if (ReDoS.tests[x].use===false){ continue; }
+					if (p!==null) { // group button: use only tests of this group
+						if (this.view==='Payload'){
+							if (p!==ReDoS.payload2str(ReDoS.tests[x].pay)){ continue; }
+						} else {
+							if (p!==ReDoS.payload2str(ReDoS.tests[x].rex)){ continue; }
+						}
+					}
+					setTimeout("(function(a){ReDoS.rxm(a);})('"+x+"')", 1);
+					setTimeout("(function(a){ReDoS.GUI.setm(a);})('"+x+"')", ReDoS.timeout);
+				}
+			} else {
+					setTimeout("(function(a){ReDoS.rxm(a);})('"+x+"')", 1);
+					setTimeout("(function(a){ReDoS.GUI.setm(a);})('"+x+"')", ReDoS.timeout);
+			}
+		}, // testmatch
+		'testreplace':  function(i,p){  // call .replace() for given testcase
+			var x = i;
+			if (i==='*'){
+				for (x in ReDoS.tests){
+					if (x==='sample'){ continue; }
+					if (ReDoS.tests[x].use===false){ continue; }
+					if (p!==null) { // group button: use only tests of this group
+						if (this.view==='Payload'){
+							if (p!==ReDoS.payload2str(ReDoS.tests[x].pay)){ continue; }
+						} else {
+							if (p!==ReDoS.payload2str(ReDoS.tests[x].rex)){ continue; }
+						}
+					}
+					setTimeout("(function(a){ReDoS.rxr(a);})('"+x+"')", 1);
+					setTimeout("(function(a){ReDoS.GUI.setr(a);})('"+x+"')", ReDoS.timeout);
+				}
+			} else {
+					setTimeout("(function(a){ReDoS.rxr(a);})('"+x+"')", 1);
+					setTimeout("(function(a){ReDoS.GUI.setr(a);})('"+x+"')", ReDoS.timeout);
+			}
+		}, // testreplace
+		'dumm': null
+	}, // GUI
+	'dumm': null
+}; //ReDoS
+//]]>
+</script>
+
+<style type="text/css">
+button  {padding:0px;       margin:-1px;border-width:1px;min-width:2em;}
+div     {padding-top: 0.2em; }
+table   {border-collapse:collapse;font-family:monospace;border:1px solid black;}
+th      {padding-right:0.2em;padding-left:0.2em;}
+.e2     {width:2em;}
+th.b    {background:#c0c0c0;width:2em;min-width:1em;}
+th.h    {background:#c0c0c0;}
+th.r    {text-align:right;  min-width:15em;}
+th.a    {text-align:right;  color:#c0c0c0;}
+td      {text-align:center; padding-right:0.2em;padding-left:0.2em;border:1px solid black;min-width:2em;}
+td:last-child {text-align:left;}
+td:first-child  {width:1em;}
+tbody   {overflow-y:auto; width:100%; height:99.9%; }
+thead   {position:relative; }
+thead th{border-left:1px solid black;color:#c0c0c0;}
+tr      {border-bottom:1px solid black;}
+</style></head>
+<body onLoad="return ReDoS.GUI.tab();">
+<table><caption>legend</caption>
+	<tr><th class="h">-str- </th><td>test string or RegExp (title shows length)</td></tr>
+	<tr><th class="a">use   </th><td>test not performed if unchecked</td></tr>
+	<tr><th class="a">RegEx </th><td>regular expression (title shows length)</td></tr>
+	<tr><th class="a"><button>m/r</button></th><td>buttons for .match or .replace test</td></tr>
+	<tr><th class="a">time  </th><td>time in mili-seconds for test</td></tr>
+	<tr><th class="a">count </th><td>number of matches or replaces</td></tr>
+	<tr><th class="a">string</th><td>result of test (title shows match or replace escaped)</td></tr>
+</table><br>
+<div>
+	<b>group table by: </b>
+	<label for="gp">Payload <input id="gp" name="grp" type="radio" value="Payload" onClick="return ReDoS.GUI.groupby(this.value);" checked ></label>
+	<label for="gr">RegExp  <input id="gr" name="grp" type="radio" value="RegExp"  onClick="return ReDoS.GUI.groupby(this.value);"></label>
+</div>
+<div>
+	<button onclick="ReDoS.GUI.testmatch(  '*',null);return false;">test all .match()</button>
+	<button onclick="ReDoS.GUI.testreplace('*',null);return false;">test all .replace()</button>
+	<span title="known problems: FF2, FF3, Opera10, Camino, Sunrise1.8, Chrome, IE, ...">
+		&#160;&#160;<b>Warning: </b>using buttons may hang your browser!
+	</span>
+</div>
+<div id="result"></div></body></html>

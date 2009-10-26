@@ -1,0 +1,7 @@
+
+ReDoS - benchmark for regular expression DoS in JavaScript
+
+	This project is a small benchmark for JavaScript with regex known to cause DoS.
+
+	Get a Copy
+		git clone git@github.com:EnDe/ReDoS.git
