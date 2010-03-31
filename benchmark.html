@@ -67,7 +67,9 @@ var ReDoS = {
 	/* we use RegExp instead of string objects to avoid escaping
 	 * see ReDoS.payload2str() to cast to string again
 	 */
-	'payloads': [
+	'patterns': [], // this array used for working
+	'payloads': [], // this array used for working
+	'payloads_default': [   // buil-in defaults
 		/aaaaaaaaaaaaX/,
 		/aaaaaaaaaaaaaaaaaaX/,
 		/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaX/,
@@ -84,7 +86,7 @@ var ReDoS = {
 		/\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\"/,     // EntLib
 		/\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\"x/,    // 
 		null ],
-	'patterns': [
+	'patterns_default': [   // buil-in defaults
 		/(a+)+/,
 		/([a-zA-Z]+)*/,
 		/(a|aa)+/,
@@ -123,6 +125,58 @@ var ReDoS = {
 		'Camino':  [5, 7, 8, 10, 11, 12, 14, 15, 19],
 		'Chrome':  [5, 7, 8, 10, 11, 12, 14, 15, 19]
 	}, // hang
+	'datatyp':  '',
+	'set_data': function(f){        // set working arrays, use *_default if f empty
+		var i;
+		while(ReDoS.payloads.pop()!==undefined){}; ReDoS.payloads = new Array();
+		while(ReDoS.patterns.pop()!==undefined){}; ReDoS.patterns = new Array();
+		if (f==='') {
+			ReDoS.datatyp  = 'data: built-in';
+			//ReDoS.payloads = ReDoS.payloads_default; // does not work in all browsers :-(
+			for (i=0; i<ReDoS.payloads_default.length; i++) { ReDoS.payloads.push(ReDoS.payloads_default[i]); }
+			for (i=0; i<ReDoS.patterns_default.length; i++) { ReDoS.patterns.push(ReDoS.patterns_default[i]); }
+		} else {
+			ReDoS.datatyp  = 'data: "' + f + '"';
+			ReDoS.readfile(f);
+		}
+	}, // set_data
+	/*****************************************************************
+	 ** read RegEx patterns and payloads
+	 *****************************************************************/
+	'readfile': function(file){     // read from file
+		var t = '';
+		var x = new XMLHttpRequest();
+		var r = x.open("GET", file, false);// load synchronous, to avoid specifying a handler
+		x.setRequestHeader('Accept', 'text/plain'); // workaround for some picky browsers reading from file:///
+		r = x.send(null);
+		t = x.responseText;
+		if ((x.status!==200) && (x.status!==0)) {
+			// 200 from http:// request; 0 from file:/// request
+			t = null; x = null;
+			alert('**ERROR: reading ' + file + ' failed');
+		}
+		//#dbx# alert(t);
+		var m = '';
+		var c = null;
+		var l = '';
+		var s = t.split('\n');
+		while ((l = s.shift())!==undefined) {
+			if (l.match(/^\s*#/)!==null) { continue; }  // skip comments
+			if (l.match(/^\s*$/)!==null) { continue; }  // skip empty lines
+			l = l.replace(/\t{2,}/g, '\t');             // squeeze multiple TABs
+			c = l.split(/\t/);
+			switch (c[0]) { // only have 2 keywords, anything else is data
+			  case 'payloads':
+			  case 'patterns': m = c[0]; break;
+			  default:
+				switch(m) {
+				  case 'payloads': ReDoS.payloads.push(c[1]); break;
+				  case 'patterns': ReDoS.patterns.push(c[1]);   break;
+				  default: /* simply ignore */ break;
+				}
+			}
+		}
+	}, // fileread
 	/*****************************************************************
 	 ** string functions
 	 *****************************************************************/
@@ -296,8 +350,9 @@ var ReDoS = {
 			return t;
 		}, // tr
 		'tab':function(){           // create table
+			var t = document.createElement('DIV'); t.innerHTML = ReDoS.datatyp;
+			document.getElementById('result').appendChild(t); t = null;
 			var b = document.createElement('TBODY'); b.id = 'tbody';
-			var t = null
 			var p = 0, r = 0, c = 0; 
 			var i = '';
 			var groups = ReDoS.payloads;
@@ -429,10 +484,16 @@ var ReDoS = {
 					setTimeout("(function(a){ReDoS.GUI.setr(a);})('"+x+"')", ReDoS.timeout);
 			}
 		}, // testreplace
+		'newtab':  function(f){  // replace table with new data
+			ReDoS.set_data(f);
+			ReDoS.GUI.clear();
+			ReDoS.GUI.tab();
+		}, // newtab
 		'dumm': null
 	}, // GUI
 	'dumm': null
 }; //ReDoS
+ReDoS.set_data('');
 //]]>
 </script>
 
@@ -482,5 +543,8 @@ tr      {border-bottom:1px solid black;}
 	</span>
 </div>
 <div class="bb"><b>Note:</b> this is a simple demo site, so some RegEx may not work proper with JavaScript here </div>
+<button onclick="ReDoS.GUI.clear();            return false;">clear table</button> &#160;
+<button onclick="ReDoS.GUI.newtab('');         return false;">load table with built-in data</button> &#160;
+<button onclick="ReDoS.GUI.newtab('ReDoS.txt');return false;">load table with data from file</button>
 <center><a href="http://github.com/EnDe/ReDoS/">ReDoS Home</a></center>
 <div id="result"></div></body></html>
