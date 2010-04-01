@@ -72,36 +72,21 @@ charclass+	([a-zA-Z]+)*
 a_or_aa	(a|aa)+
 a_or_a	(a|a?)+
 a_11	(.*a){11}
-#  5
 a_65	(.*a){65}
-#  6
 Friedl	([^\\"']+)*
 #--------------- same as above again enclosed in ^and $ ----------------
-#  7
 start_a++	^(a+)+$
-#  8
 start_charclass	^([a-zA-Z]+)*$
-#  9
 start_a_or_aa	^(a|aa)+$
-# 10
 start_a_or_a	^(a|a?)+$
-# 11
 start_a_11	^(.*a){11}$
-# 12
 start_a_65	^(.*a){65}$
-# 13
 start_Friedl	^([^\\"']+)*$
 #---------------
-# 14
 OWASP	^[a-zA-Z]+((['\,\.\-][a-zA-Z ])?[a-zA-Z]*)*$
-# 15
 DataVault	^\[(,.*)*\]$
-# 16
 EntLib	^([^"]+)(?:\\([^"]+))*$
-# 17
 Java_Classname	^(([a-z])+.)+[A-Z]([a-z])+$
-# 18
 Cox_10	a?a?a?a?a?a?a?a?a?a?aaaaaaaaaa
-# 19
 Cox_25	a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?aaaaaaaaaaaaaaaaaaaaaaaaa
 #--------------+---------------------------------------------------------------
