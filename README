@@ -5,6 +5,10 @@ ReDoS - benchmark for regular expression DoS in JavaScript
 
 	Own RegEx can be added interactively or read from external ReDoS.txt file.
 
+	Not tet checked/implemented:
+		CVE-2007-1659 CVE-2007-1660 CVE-2007-1661 CVE-2007-1662
+		CVE-2007-4766 CVE-2007-4767 CVE-2007-4768
+
 	Get a Copy
 		git clone git@github.com:EnDe/ReDoS.git
 		git clone http://github.com/EnDe/ReDoS.git
