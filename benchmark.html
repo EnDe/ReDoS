@@ -125,7 +125,7 @@ var ReDoS = {
 		'Camino':  [5, 7, 8, 10, 11, 12, 14, 15, 19],
 		'Chrome':  [5, 7, 8, 10, 11, 12, 14, 15, 19]
 	}, // hang
-	'datatyp':  '',
+	'datatyp':  '',                 // contains filename and number of RegEx and payloads
 	'set_data': function(f){        // set working arrays, use *_default if f empty
 		var i;
 		while(ReDoS.payloads.pop()!==undefined){}; ReDoS.payloads = new Array();
@@ -236,7 +236,7 @@ var ReDoS = {
 			'rt0':      'contains start time in mili-seconds for replace()',
 			'mt1':      'contains  end  time in mili-seconds for match()',
 			'rt1':      'contains  end  time in mili-seconds for replace()',
-			'cnt':      'number of substitutions doen by replace()',
+			'cnt':      'number of substitutions done by replace()',
 			'matches':  'contains the result of pay.match(reg);',
 			'merror':   'catched errors and exceptions',
 			'replace':  'contains the result of pay.replace(reg,"X");',
@@ -570,9 +570,11 @@ tr.alt  {background:#cfd;}
 	<tr><th class="a">(-right column-)</th><td>result of test (title shows match or replace escaped)</td></tr>
 </table><br>
 <div>
+	<input id="tim" size="2" title="timeout for tests in milli-seconds"> &#160;<button onclick="ReDoS.timeout(document.getElementById('tim').value);return false;">set timeout </button><br>
 	<input id="pay" size="32">&#160;<button onclick="ReDoS.GUI.addpay(document.getElementById('pay').value);return false;">add new Payload</button><br>
 	<input id="rex" size="32">&#160;<button onclick="ReDoS.GUI.addrex(document.getElementById('rex').value);return false;">add new RegExp </button>
 </div>
+<script>document.getElementById('tim').value = ReDoS.timeout;</script>
 <div>
 	<button onclick="ReDoS.GUI.clear();            return false;">clear table</button> &#160;
 	<button onclick="ReDoS.GUI.newtab('');         return false;">load table with built-in data</button> &#160; <br/>
