@@ -144,16 +144,45 @@ var ReDoS = {
 	 ** read RegEx patterns and payloads
 	 *****************************************************************/
 	'readfile': function(file){     // read from file
+	/* SYNTAX
+     *  The syntax in the file (see ReDoS.txt also) is as follows:
+     *
+     *      empty lines are ignored
+     *      lines starting with # are comments and ignored
+     *      all other lines are data lines
+     *
+     *  Data lines have following format:
+     *
+     *      keyTABvalue
+     *
+     *  where TAB is the ASCII TAB character (hex 0x09).
+     *  key is any alphanumeric string, following keywords are special
+     *      payloads    - start of list with payloads
+     *      patterns    - start of list with RegEx patterns
+     *  The value of these keywords may be any string.
+     *  All other lines are either payloads or patterns.  The left column is
+     *  just a descriptive keyword. The right column is either the sring for
+     *  payload or the raw string as RegEx (without delimiters like /).
+	 *
+	 * EXAMPLE
+     *      payloads    following lines are payloads
+     *      str1        foo
+     *      str2        bar
+     *      patterns    following lines are raw RegEx
+     *      regex1      ^a|b
+     *      regex2      ^b|a
+	 */
 		var t = '';
 		var x = new XMLHttpRequest();
 		var r = x.open("GET", file, false);// load synchronous, to avoid specifying a handler
 		x.setRequestHeader('Accept', 'text/plain'); // workaround for some picky browsers reading from file:///
 		r = x.send(null);
 		t = x.responseText;
-		if ((x.status!==200) && (x.status!==0)) {
+		if ((t===null) || ((x.status!==200) && (x.status!==0))) {
 			// 200 from http:// request; 0 from file:/// request
 			t = null; x = null;
 			alert('**ERROR: reading ' + file + ' failed');
+			return;
 		}
 		//#dbx# alert(t);
 		var m = '';
@@ -171,7 +200,7 @@ var ReDoS = {
 			  default:
 				switch(m) {
 				  case 'payloads': ReDoS.payloads.push(c[1]); break;
-				  case 'patterns': ReDoS.patterns.push(c[1]);   break;
+				  case 'patterns': ReDoS.patterns.push(c[1]); break;
 				  default: /* simply ignore */ break;
 				}
 			}
@@ -254,7 +283,7 @@ var ReDoS = {
 			if (c!==null) { d.setAttribute('class',c); }
 			var b = document.createElement('BUTTON');
 			b.value = i;
-			if (p==='m'){
+			if ((p==='m')||(p==='M')){
 				if (u===null) { // just one regex
 					b.setAttribute('onClick','ReDoS.GUI.testmatch("'+i+'",null);  return false;');
 					b.title = 'test with .match()';
@@ -263,7 +292,7 @@ var ReDoS = {
 					b.title = u;
 				}
 			}
-			if (p==='r'){
+			if ((p==='r')||(p==='R')){
 				if (u===null) { // just one regex
 					b.setAttribute('onClick','ReDoS.GUI.testreplace("'+i+'",null);return false;');
 					b.title = 'test with .replace()';
@@ -289,10 +318,10 @@ var ReDoS = {
 			var t = document.createElement('TR');
 			t.appendChild(this.td( 'TH', 'h', null, null, ' '));
 			t.appendChild(this.td( 'TH', 'h', null, null, ' '));
-			t.appendChild(this.btn('TH', 'b', ReDoS.payload2str(p), 'test all RegExp with .match()',  'm'));
-			t.appendChild(this.btn('TH', 'b', ReDoS.payload2str(p), 'test all RegExp with .replace()','r'));
+			t.appendChild(this.btn('TH', 'b', ReDoS.payload2str(p), 'test all RegExp with .match()',  'M'));
+			t.appendChild(this.btn('TH', 'b', ReDoS.payload2str(p), 'test all RegExp with .replace()','R'));
 			d = document.createElement('TH');
-			d.setAttribute('class','h');
+			d.setAttribute('class','str');
 			d.colSpan = 2;
 			d.title   = 'length: '+ ReDoS.payload2str(p).length;
 			d.appendChild(document.createTextNode( ReDoS.payload2str(p) ));
@@ -336,13 +365,13 @@ var ReDoS = {
 				d = document.createElement('TH');
 				d.rowSpan = 2;
 				d.title   = 'length: '+ ReDoS.payload2str(r).length;
-				d.setAttribute('class','r');
+				d.setAttribute('class','rex');
 				d.appendChild(document.createTextNode( ReDoS.payload2str(r) ));
 				t.appendChild(d);
 			}
-			if ((this.rows%2)===0){ t.style.backgroundColor = '#f0f0f0'; }
+			if ((this.rows%2)===0){ t.setAttribute('class','alt'); }
 			// create cell in row: tag, class,  id,               title,        text
-			// ------------------+-----+------+-----------------+--------------+---------
+			// ------------------+-----+-----+-------------------+-------------+---------
 			t.appendChild(this.btn('TD', null,  i,                 null,         txt));
 			t.appendChild(this.td( 'TD', null, (a + 'time.'  + i),(a + ' time'), ' '));
 			t.appendChild(this.td( 'TD', null, (a + 'count.' + i),(a + ' count'),' '));
@@ -350,7 +379,10 @@ var ReDoS = {
 			return t;
 		}, // tr
 		'tab':function(){           // create table
-			var t = document.createElement('DIV'); t.innerHTML = ReDoS.datatyp;
+			var t = document.createElement('DIV');
+				t.innerHTML = ReDoS.datatyp 
+				+ '<SPAN class="s"> (' + ReDoS.patterns.length + ' RegEx) </SPAN>'
+				+ '<SPAN class="s"> (' + ReDoS.payloads.length + ' strings) </SPAN>';
 			document.getElementById('result').appendChild(t); t = null;
 			var b = document.createElement('TBODY'); b.id = 'tbody';
 			var p = 0, r = 0, c = 0; 
@@ -401,41 +433,47 @@ var ReDoS = {
 		'addpay':   function(val){ ReDoS.payloads.push(new RegExp(val)); this.clear(); this.tab(); }, // addpay
 		'addrex':   function(val){ ReDoS.patterns.push(new RegExp(val)); this.clear(); this.tab(); }, // addrex
 		'setm': function(i){
-			var t = ReDoS.tests[i];
-			if (t.mt1===null){ document.getElementById('Match.time.' +i).style.background = 'red'; }
-			document.getElementById('Match.time.' +i).innerHTML = ((t.mt1===null)    ?'~':t.mt1);
-			if (t.merror!==null){
-				document.getElementById('Match.text.' +i).innerHTML = ReDoS.escape(t.merror.toString());
-				document.getElementById('Match.text.' +i).style.background = 'red';
-				document.getElementById('Match.text.' +i).title     = '<JavaScript runtime exception>';
-				t = null;
+			var r = ReDoS.tests[i];
+			var t = document.getElementById('Match.time.' +i);
+			if (t===null) { return; }
+			if (r.mt1===null){ t.style.background = 'red'; }
+			t.innerHTML = ((r.mt1===null)    ?'~':r.mt1);
+			t = document.getElementById('Match.text.' +i);
+			if (r.merror!==null){
+				t.innerHTML = ReDoS.escape(r.merror.toString());
+				t.style.background = 'red';
+				t.title     = '<JavaScript runtime exception>';
+				r = null;
 				return;
 			}
-			document.getElementById('Match.count.'+i).innerHTML = ((t.matches===null)?'-':t.matches.length-1);
-			document.getElementById('Match.text.' +i).title     = ((t.matches===null)?'<null>':ReDoS.escape(t.matches.toString()));
+			document.getElementById('Match.count.'+i).innerHTML = ((r.matches===null)?'-':r.matches.length-1);
+			t.title     = ((r.matches===null)?'<null>':ReDoS.escape(r.matches.toString()));
 			var s = '';
-			if (t.matches!==null){
-				t.matches.shift();
-				s = t.matches.join(', ');
+			if (r.matches!==null){
+				r.matches.shift();
+				s = r.matches.join(', ');
 				//while(p.pop()) {};
-				document.getElementById('Match.text.'+i).innerHTML = s;
+				t.innerHTML = s;
 			}
-			t = null;
+			r = null;
 		}, // setm
 		'setr': function(i,t,p,c){
-			var t = ReDoS.tests[i];
-			if (t.rt1===null){ document.getElementById('Replace.time.' +i).style.background = 'red'; }
-			document.getElementById('Replace.time.' +i).innerHTML = ((t.rt1===null)    ?'~':t.rt1);
-			if (t.rerror!==null){
-				document.getElementById('Replace.text.' +i).innerHTML = ReDoS.escape(t.rerror.toString());
-				document.getElementById('Replace.text.' +i).style.background = 'red';
-				document.getElementById('Replace.text.' +i).title     = '<JavaScript runtime exception>';
-				t = null;
+			var r = ReDoS.tests[i];
+			var t = document.getElementById('Replace.time.' +i);
+			if (t===null) { return; }
+			if (r.rt1===null){ document.getElementById('Replace.time.' +i).style.background = 'red'; }
+			t.innerHTML = ((r.rt1===null)    ?'~':r.rt1);
+			t = document.getElementById('Replace.text.' +i);
+			if (r.rerror!==null){
+				t.innerHTML = ReDoS.escape(r.rerror.toString());
+				t.style.background = 'red';
+				t.title     = '<JavaScript runtime exception>';
+				r = null;
 				return;
 			}
-			document.getElementById('Replace.text.' +i).innerHTML = t.replace;
-			document.getElementById('Replace.count.'+i).innerHTML = t.cnt;
-			document.getElementById('Replace.text.' +i).title     = ((t.replace===null)?'<null>':ReDoS.escape(t.replace.toString()));
+			document.getElementById('Replace.count.'+i).innerHTML = r.cnt;
+			t.innerHTML = r.replace;
+			t.title     = ((r.replace===null)?'<null>':ReDoS.escape(r.replace.toString()));
 			t = null;
 		}, // setr
 		'testmatch':    function(i,p){  // call .match() for given testcase
@@ -498,42 +536,53 @@ ReDoS.set_data('');
 </script>
 
 <style type="text/css">
-button  {padding:0px;       margin:-1px;border-width:1px;min-width:2em;}
+button  {padding:0px;       color:black;margin:-1px;border-width:1px;min-width:2em;border-radius:4px;}
 div     {padding-top: 0.2em; }
+span.s  {font-size: 70%; }
 table   {border-collapse:collapse;font-family:monospace;border:1px solid black;}
 th      {padding-right:0.2em;padding-left:0.2em;}
 .e2     {width:2em;}
-th.b    {background:#c0c0c0;width:2em;min-width:1em;}
-th.h    {background:#c0c0c0;}
-th.r    {text-align:right;  min-width:15em;}
-th.a    {text-align:right;  color:#c0c0c0;}
+th.str  {background:#5f9;   color:#0000ff;}
+th.rex  {text-align:right;  min-width:15em;}
+th.a    {text-align:right;  color:#a0a0a0;}
 td      {text-align:center; padding-right:0.2em;padding-left:0.2em;border:1px solid black;min-width:2em;}
 td:last-child {text-align:left;}
 td:first-child  {width:1em;}
 tbody   {overflow-y:auto; width:100%; height:99.9%; }
 thead   {position:relative; }
-thead th{border-left:1px solid black;color:#c0c0c0;}
+thead th{border-left:  1px solid black;color:#a0a0a0;}
 tr      {border-bottom:1px solid black;}
-.bb     {margin:1em;border:1px solid black;}
+tr.alt  {background:#cfd;}
+.note   {border:1px solid black;margin:1em;padding:0.1em;}
 </style></head>
 <body onLoad="return ReDoS.GUI.tab();">
+<center><a href="http://github.com/EnDe/ReDoS/" title="ReDoS Home">ReDoS</a></center>
+<div class="note"><b>Note:</b> this is a simple demo site, so some RegEx may not work proper with JavaScript here </div>
 <table><caption>legend</caption>
-	<tr><th class="h">-str- </th><td>test string or RegExp (title shows length)</td></tr>
+	<tr><th class="str">-str- </th><td>test string or RegExp (title shows length)</td></tr>
 	<tr><th class="a">use   </th><td>test not performed if unchecked</td></tr>
-	<tr><th class="a">RegEx </th><td>regular expression (title shows length)</td></tr>
-	<tr><th class="a"><button>m/r</button></th><td>buttons for .match or .replace test</td></tr>
-	<tr><th class="a">time  </th><td>time in mili-seconds for test</td></tr>
+	<tr><th class="a">time  </th><td>time in milli-seconds for test</td></tr>
 	<tr><th class="a">count </th><td>number of matches or replaces</td></tr>
-	<tr><th class="a">string</th><td>result of test (title shows match or replace escaped)</td></tr>
+	<tr><th class="a"><button>m</button> <button>r</button></th><td>buttons for .match or .replace (single test)</td></tr>
+	<tr><th class="a"><button>M</button> <button>R</button></th><td>buttons for .match or .replace (test group)</td></tr>
+	<tr><th class="a">RegExp (left)</th><td>regular expression (title shows length)</td></tr>
+	<tr><th class="a">string (left)</th><td>test pattern (title shows length)</td></tr>
+	<tr><th class="a">(-right column-)</th><td>result of test (title shows match or replace escaped)</td></tr>
 </table><br>
 <div>
-	<b>group table by: </b>
-	<label for="gp">Payload <input id="gp" name="grp" type="radio" value="Payload" onClick="return ReDoS.GUI.groupby(this.value);" checked ></label>
-	<label for="gr">RegExp  <input id="gr" name="grp" type="radio" value="RegExp"  onClick="return ReDoS.GUI.groupby(this.value);"></label>
+	<input id="pay" size="32">&#160;<button onclick="ReDoS.GUI.addpay(document.getElementById('pay').value);return false;">add new Payload</button><br>
+	<input id="rex" size="32">&#160;<button onclick="ReDoS.GUI.addrex(document.getElementById('rex').value);return false;">add new RegExp </button>
 </div>
 <div>
-	<input id="pay" size="30">&#160;<button onclick="ReDoS.GUI.addpay(document.getElementById('pay').value);return false;">add new Payload</button><br>
-	<input id="rex" size="30">&#160;<button onclick="ReDoS.GUI.addrex(document.getElementById('rex').value);return false;">add new RegExp </button>
+	<button onclick="ReDoS.GUI.clear();            return false;">clear table</button> &#160;
+	<button onclick="ReDoS.GUI.newtab('');         return false;">load table with built-in data</button> &#160; <br/>
+	<input id="fil" size="12" type="file">&#160;
+	<button onclick="ReDoS.GUI.newtab(document.getElementById('fil').value);return false;">load table with data from file</button>
+</div>
+<div>
+	<b>group table by: </b>
+	<label for="gp" title="list all RegEx for each payload">Payload <input id="gp" name="grp" type="radio" value="Payload" onClick="return ReDoS.GUI.groupby(this.value);" checked ></label>
+	<label for="gr" title="list all payloads for each RegEx">RegExp <input id="gr" name="grp" type="radio" value="RegExp"  onClick="return ReDoS.GUI.groupby(this.value);"></label>
 </div>
 <div>
 	<button onclick="ReDoS.GUI.testmatch(  '*',null);return false;">test all .match()</button>
@@ -542,9 +591,5 @@ tr      {border-bottom:1px solid black;}
 		&#160;&#160;<b>Warning: </b>using buttons may hang your browser!
 	</span>
 </div>
-<div class="bb"><b>Note:</b> this is a simple demo site, so some RegEx may not work proper with JavaScript here </div>
-<button onclick="ReDoS.GUI.clear();            return false;">clear table</button> &#160;
-<button onclick="ReDoS.GUI.newtab('');         return false;">load table with built-in data</button> &#160;
-<button onclick="ReDoS.GUI.newtab('ReDoS.txt');return false;">load table with data from file</button>
-<center><a href="http://github.com/EnDe/ReDoS/">ReDoS Home</a></center>
+<br/>
 <div id="result"></div></body></html>
