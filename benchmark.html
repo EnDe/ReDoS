@@ -20,7 +20,7 @@
 <script language="JavaScript" type="text/javascript">
 //<![CDATA[
 var ReDoS = {
-	'VERSION': '14.05.06',
+	'VERSION': '14.05.07',
 	/* DESCRIPTION
 	 *      All RegEx and payloads are defined in this ReDoS{} object.
 	 *      There're 2 functions in ReDoS: .testmatch() .testreplace()
@@ -302,6 +302,9 @@ var ReDoS = {
 					b.title = u;
 				}
 			}
+			if ((p==='x')||(p==='X')){
+					b.setAttribute('onClick','ReDoS.GUI.check_use("' + i + '");return false;');
+			}
 			if (u!==null) { b.title = u; } // overwrite above defaults
 			b.appendChild(document.createTextNode(p));
 			d.appendChild(b);
@@ -315,9 +318,9 @@ var ReDoS = {
 			d.appendChild(document.createTextNode(p));
 			return d;
 		}, // td
-		'hd':function(p){           // create (sub)table header row
+		'hd':function(i,p){         // create (sub)table header row
 			var t = document.createElement('TR');
-			t.appendChild(this.td( 'TH', 'h', null, null, ' '));
+			t.appendChild(this.btn('TH', 'b', i, 'toggle all checkboxes for: '+ReDoS.payload2str(p),  'x'));
 			t.appendChild(this.td( 'TH', 'h', null, null, ' '));
 			t.appendChild(this.btn('TH', 'b', ReDoS.payload2str(p), 'test all RegExp with .match()',  'M'));
 			t.appendChild(this.btn('TH', 'b', ReDoS.payload2str(p), 'test all RegExp with .replace()','R'));
@@ -342,7 +345,7 @@ var ReDoS = {
 			var txt = (r===null) ? 'r' : 'm';
 			var t = document.createElement('TR');
 			if ((r===null)&&(p===null)){
-				t.appendChild(this.td('TH','e2',null,'enable/disable match/replace','use'   ));
+			    t.appendChild(this.btn('TH','e2', 'p\\\\d+', 'toggle all checkboxes for all strings', 'X'));
 				t.appendChild(this.td('TH',null,null, null,((this.view==='Payload')?'RegExp':'string') ));
 				t.appendChild(this.td('TH','e2',null, null,                         ' '     ));
 				t.appendChild(this.td('TH','e2',null,'elapsed time in ms',          'time'  ));
@@ -359,7 +362,7 @@ var ReDoS = {
 				d = document.createElement('TD');
 				d.rowSpan = 2;
 				x = document.createElement('INPUT');
-				x.id = i + '.use'; x.type = 'checkbox'; x.checked = true;
+				x.id = i + '.use'; x.type = 'checkbox'; x.checked = true; x.title = i;
 				x.setAttribute('onClick','ReDoS.GUI.use("'+i+'",this.checked);');
 				d.appendChild(x);
 				t.appendChild(d);
@@ -396,10 +399,11 @@ var ReDoS = {
 			}
 			for (p=0; p<groups.length; p++){
 				if (groups[p]===null){ continue; }
-				b.appendChild( this.hd( groups[p] ) );
+				i = 'p' + p.toString(10);
+				b.appendChild( this.hd( i, groups[p] ) );
 				for (c=0; c<lines.length; c++){
 					if (lines[c]===null){ continue; }
-					i = 'p' + p.toString(10) + '.' + c.toString(10); 
+				    i = 'p' + p.toString(10) + '.' + c.toString(10); 
 					b.appendChild( this.tr( i, lines[c], groups[p] ) );
 					b.appendChild( this.tr( i, null,     groups[p] ) );
 					ReDoS.tests[i] = {
@@ -477,6 +481,15 @@ var ReDoS = {
 			t.title     = ((r.replace===null)?'<null>':ReDoS.escape(r.replace.toString()));
 			t = null;
 		}, // setr
+		'check_use':    function(i){    // toggle "use" checkbox for matching id i
+			var x = 0;
+			var t = document.getElementsByTagName('INPUT');
+			//#dbx# alert(new RegExp(i + '\\.\\d+\\.use'));
+			for (x=0; x<t.length; x++){ // ids are like  p11.23.use
+			    if (t[x].id.match(new RegExp(i + '\\.\\d+\\.use'))===null) { continue; }  // skip if not matches
+			    t[x].checked = ! t[x].checked;
+			}
+		}, // check_use
 		'testmatch':    function(i,p){  // call .match() for given testcase
 			/* i='*':   use all testcases
 			 * i!=null: use just that testcase
@@ -494,6 +507,8 @@ var ReDoS = {
 							if (p!==ReDoS.payload2str(ReDoS.tests[x].rex)){ continue; }
 						}
 					}
+					// following does not yet work proper
+					//setTimeout("(function(a){document.getElementById('mcount').innerHTML=ReDoS.tests[a].pay;ReDoS.rxm(a);})('"+x+"')", 1);
 					setTimeout("(function(a){ReDoS.rxm(a);})('"+x+"')", 1);
 					setTimeout("(function(a){ReDoS.GUI.setm(a);})('"+x+"')", ReDoS.timeout);
 				}
@@ -539,7 +554,7 @@ ReDoS.set_data('');
 <style type="text/css">
 button  {padding:0px;       color:black;margin:-1px;border-width:1px;min-width:2em;border-radius:4px;}
 div     {padding-top: 0.2em; }
-span.s  {font-size: 70%; }
+span.s  {font-size: 70%; min-width:20em;}
 table   {border-collapse:collapse;font-family:monospace;border:1px solid black;}
 th      {padding-right:0.2em;padding-left:0.2em;}
 .e2     {width:2em;}
@@ -558,16 +573,17 @@ tr.alt  {background:#cfd;}
 </style></head>
 <body onLoad="return ReDoS.GUI.tab();">
 <center><a href="http://github.com/EnDe/ReDoS/" title="ReDoS Home">ReDoS</a> &#160; <small><script>document.write(ReDoS.VERSION);</script></small></center>
-<div class="note"><b>Note:</b> this is a simple demo site, so some RegEx may not work proper with JavaScript here </div>
+<div class="note"><b>Note:</b> This is a simple demo site. Some RegEx may not work proper with JavaScript here 'cause they are crafted for other regex engines. Please check your error console.</div>
 <table><caption>legend</caption>
 	<tr><th class="str">-str- </th><td>test string or RegExp (title shows length)</td></tr>
-	<tr><th class="a">use   </th><td>test not performed if unchecked</td></tr>
+	<tr><th class="a"><button>X</button></th><td>test not performed if unchecked; button toggles all checkboxes</td></tr>
+	<tr><th class="a"><button>x</button></th><td>test not performed if unchecked; button toggles checkboxes of group</td></tr>
 	<tr><th class="a">time  </th><td>time in milli-seconds for test</td></tr>
 	<tr><th class="a">count </th><td>number of matches or replaces</td></tr>
 	<tr><th class="a"><button>m</button> <button>r</button></th><td>buttons for .match or .replace (single test)</td></tr>
 	<tr><th class="a"><button>M</button> <button>R</button></th><td>buttons for .match or .replace (test group)</td></tr>
-	<tr><th class="a">RegExp (left)</th><td>regular expression (title shows length)</td></tr>
-	<tr><th class="a">string (left)</th><td>test pattern (title shows length)</td></tr>
+	<tr><th class="rex">RegExp (left)</th><td>regular expression (title shows length)</td></tr>
+	<tr><th class="rex">string (left)</th><td>test pattern (title shows length)</td></tr>
 	<tr><th class="a">(-right column-)</th><td>result of test (title shows match or replace escaped)</td></tr>
 </table><br>
 <div>
@@ -584,7 +600,7 @@ tr.alt  {background:#cfd;}
 </div>
 <div>
 	<b>group table by: </b>
-	<label for="gp" title="list all RegEx for each payload">Payload <input id="gp" name="grp" type="radio" value="Payload" onClick="return ReDoS.GUI.groupby(this.value);" checked ></label>
+	<label for="gp" title="list all RegEx for each payload">(payload) string <input id="gp" name="grp" type="radio" value="Payload" onClick="return ReDoS.GUI.groupby(this.value);" checked ></label>
 	<label for="gr" title="list all payloads for each RegEx">RegExp <input id="gr" name="grp" type="radio" value="RegExp"  onClick="return ReDoS.GUI.groupby(this.value);"></label>
 </div>
 <div>
@@ -592,7 +608,9 @@ tr.alt  {background:#cfd;}
 	<button onclick="ReDoS.GUI.testreplace('*',null);return false;">test all .replace()</button>
 	<span title="known problems: FF2, FF3, Opera10, Camino, Sunrise1.8, Chrome, IE, ...">
 		&#160;&#160;<b>Warning: </b>using buttons may hang your browser!
-	</span>
+	</span><br/>
+	<span class="s" id="mcount">.</span>
+	<span class="s" id="rcount">.</span>
 </div>
 <br/>
 <div id="result"></div></body></html>
