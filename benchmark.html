@@ -9,7 +9,7 @@
 	<meta name="Author"         content="Achim Hoffmann">
 	<meta name="Generator"      content="me using vi ;-)">
 	<meta name="DC.Creator"     content="redos @at@ my -dash- stp .dot. net">
-	<meta name="DC.Date"        content="2009-20-10">
+	<meta name="DC.Date"        content="2009-10-20">
 	<meta name="DC.Source"      content="@(#) benchmark.html $Id$">
 	<meta name="DC.Identifier"  content="git://github .dot. com/EnDe/ReDoS (dot) git">
 	<meta name="DC.Title"       content="ReDoS-Test for JavaScript">
@@ -21,10 +21,11 @@
 //<![CDATA[
 var ReDoS = {
 	'VERSION': '14.05.07',
+	/*         '18.10.31'   typos fixed */
 	/* DESCRIPTION
-	 *      All RegEx and payloads are defined in this ReDoS{} object.
-	 *      There're 2 functions in ReDoS: .testmatch() .testreplace()
-	 *      to perform the test. These functions call rxm() and rxr().
+	 *      All RegEx and payloads are defined in this  ReDoS{} object.
+	 *      There're 2 functions in ReDoS:  .testmatch() .testreplace()
+	 *      to perform the test. These functions call  rxm() and rxr().
 	 *
 	 *      +---------------+                       +---------------+
 	 *      |   functions   |                       |      data     |
@@ -42,20 +43,20 @@ var ReDoS = {
 	 *       |  +---------------+                   +---------------+
 	 *        \---- called with setTimeout()
 	 *
-	 *      All variables and functions in ReDoS.GUI* are for building
+	 *      All variables and functions in  ReDoS.GUI* are for building
 	 *      and updating the DOM (HML tags).
 	 *
 	 *      Note about setTimeout() call:
-	 *      The setTimeout() calls are used to simulate threading.This
-	 *      avoids a completely hanging browser if a match() replace()
-	 *      consumes all time.
-	 *          1st setTimout() calls the .match() or .replace() 
-	 *          2st setTimout() calls a GUI function to display values
+	 *      The setTimeout() calls are used to simulate threading. This
+	 *      avoids a completely hanging browser if any call to  match()
+	 *      or  replace()  consumes all time.
+	 *          1st setTimout() calls the  .match()  or  .replace() 
+	 *          2nd setTimout() calls a GUI function to display values
 	 *      For gecko-based browsers the first argument of setTimeout()
-	 *      must be enclosed in " (double quotes),  otherwise a syntax
+	 *      must be enclosed in  " (double quotes),  otherwise a syntax
 	 *      error is thrown.
-	 *      Most other browsers accept the 1'st argument without these
-	 *      quotes, but works with quotes too, hence we use the them.
+	 *      Most other browsers accept the first argument without these
+	 *      quotes, but work with quotes too, hence we use the them.
 	 *
 	 */
 	/*****************************************************************
@@ -70,7 +71,7 @@ var ReDoS = {
 	 */
 	'patterns': [], // this array used for working
 	'payloads': [], // this array used for working
-	'payloads_default': [   // buil-in defaults
+	'payloads_default': [   // built-in defaults
 		/aaaaaaaaaaaaX/,
 		/aaaaaaaaaaaaaaaaaaX/,
 		/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaX/,
@@ -87,7 +88,7 @@ var ReDoS = {
 		/\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\"/,     // EntLib
 		/\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\"x/,    // 
 		null ],
-	'patterns_default': [   // buil-in defaults
+	'patterns_default': [   // built-in defaults
 		/(a+)+/,
 		/([a-zA-Z]+)*/,
 		/(a|aa)+/,
@@ -161,9 +162,9 @@ var ReDoS = {
      *      payloads    - start of list with payloads
      *      patterns    - start of list with RegEx patterns
      *  The value of these keywords may be any string.
-     *  All other lines are either payloads or patterns.  The left column is
-     *  just a descriptive keyword. The right column is either the sring for
-     *  payload or the raw string as RegEx (without delimiters like /).
+     *  All other lines are either payloads or patterns. The left column is
+     *  just a descriptive keyword. The right column is either a string for
+     *  the payload or the raw string as RegEx (without delimiters like /).
 	 *
 	 * EXAMPLE
      *      payloads    following lines are payloads
@@ -219,7 +220,7 @@ var ReDoS = {
 		}
 		return r;
 	}, // payload2str
-	'escape': function(r){  // browser build-ins are too stupid, sometimes
+	'escape': function(r){  // browser built-ins are too stupid, sometimes
 		return r.replace(/[^a-zA-Z0-9;,:._#'+*~!"§$%\/()=?{}\[\]\\ |-]/gi,function(c){return '%'+parseInt(c.charCodeAt(),10).toString(16);});
 
 		return r;
@@ -239,12 +240,12 @@ var ReDoS = {
 			'rt1':      'contains  end  time in mili-seconds for replace()',
 			'cnt':      'number of substitutions done by replace()',
 			'matches':  'contains the result of pay.match(reg);',
-			'merror':   'catched errors and exceptions',
+			'merror':   'catched errors and exceptions in match()',
 			'replace':  'contains the result of pay.replace(reg,"X");',
-			'rerror':   'catched errors and exceptions'
+			'rerror':   'catched errors and exceptions in replace()'
 		}
 	}, // tests
-	/* for following functions the input parameter must be key of above tests hash */
+	/* for following functions the input parameter must be key of above tests' hash */
 	'rxm':  function(i){            // .match() for given testcase
 		var t = this.tests[i];
 		var a = null;
@@ -573,7 +574,7 @@ tr.alt  {background:#cfd;}
 </style></head>
 <body onLoad="return ReDoS.GUI.tab();">
 <center><a href="http://github.com/EnDe/ReDoS/" title="ReDoS Home">ReDoS</a> &#160; <small><script>document.write(ReDoS.VERSION);</script></small></center>
-<div class="note"><b>Note:</b> This is a simple demo site. Some RegEx may not work proper with JavaScript here 'cause they are crafted for other regex engines. Please check your error console.</div>
+<div class="note"><b>Note:</b> This is a simple demo site. Some RegEx may not work proper with JavaScript here 'cause they are crafted for other RegEx engines. Please check your error console.</div>
 <table><caption>legend</caption>
 	<tr><th class="str">-str- </th><td>test string or RegExp (title shows length)</td></tr>
 	<tr><th class="a"><button>X</button></th><td>test not performed if unchecked; button toggles all checkboxes</td></tr>
